@@ -13,18 +13,24 @@ fn main() {
     let server = Server::http("localhost:8000").unwrap();
 
     server.incoming_requests().for_each(|mut request| {
+        let mut body = String::new();
+        request.as_reader().read_to_string(&mut body).unwrap();
         let resp = match (request.method(), request.url()) {
-            (&Method::Post, "/command") => {
-                slash_command(&mut request).unwrap_or_else(|_| Response::empty(500))
+            (&Method::Post, "//command") => slash_command(&body)
+                .map(|_| Response::empty(200))
+                .unwrap_or_else(|_| Response::empty(500)),
+            (method, url) => {
+                println!("{} {}", method, url);
+                Response::empty(404)
             }
-            _ => Response::empty(404),
         };
         request.respond(resp).unwrap();
     });
 }
 
-fn slash_command(request: &mut Request) -> Result<Response<std::io::Empty>> {
-    let command = serde_json::from_reader::<_, SlashCommandRequest>(request.as_reader())?;
+fn slash_command(body: &str) -> Result<()> {
+    println!("body: {}", body);
+    let command = serde_json::from_str::<SlashCommandRequest>(body)?;
     println!("{:?}", command);
-    Ok(Response::empty(200))
+    Ok(())
 }
