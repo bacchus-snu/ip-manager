@@ -1,9 +1,8 @@
 {
-    "text": "ip",
+    "title": "ip",
     "attachments": [
         {
             "title": "도메인",
-            "text": "domain",
             "callback_id": "domain",
             "actions": [
                 {
@@ -20,17 +19,9 @@
             "actions": [
                 {
                     "name": "using",
-                    "type": "select",
-                    "options": [
-                        {
-                            "text": "사용중",
-                            "value": "true"
-                        },
-                        {
-                            "text": "미사용",
-                            "value": "false"
-                        }
-                    ]
+                    "text": "using",
+                    "type": "button",
+                    "value": "using"
                 }
             ]
         },
@@ -59,27 +50,21 @@
             "actions": [
                 {
                     "name": "set",
-                    "text": "설정",
+                    "text": "수정",
                     "type": "button",
                     "value": "set"
                 }
             ]
         },
         {
-            "title": "확인",
-            "callback_id": "confirm",
+            "callback_id": "delete",
             "actions": [
                 {
-                    "name": "save",
-                    "text": "저장",
+                    "name": "delete",
+                    "text": "삭제",
+                    "style": "danger",
                     "type": "button",
-                    "value": "save"
-                },
-                {
-                    "name": "cancel",
-                    "text": "취소",
-                    "type": "button",
-                    "value": "cancel"
+                    "value": "delete"
                 }
             ]
         }

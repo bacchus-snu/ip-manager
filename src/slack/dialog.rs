@@ -25,10 +25,15 @@ pub enum Element {
 pub struct Text {
     pub label: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub optional: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub placeholder: Option<String>,
 }
 
@@ -36,10 +41,15 @@ pub struct Text {
 pub struct TextArea {
     pub label: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub optional: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub subtype: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub placeholder: Option<String>,
 }
 
@@ -47,9 +57,12 @@ pub struct TextArea {
 pub struct Select {
     pub label: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub optional: Option<bool>,
     pub options: Vec<SelectOption>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub placeholder: Option<String>,
 }
 
