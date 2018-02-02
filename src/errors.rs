@@ -1,8 +1,12 @@
+extern crate config;
+extern crate reqwest;
+extern crate serde_json;
+
 error_chain!{
     foreign_links {
-        Reqwest(::reqwest::Error);
-        Json(::serde_json::Error);
+        Reqwest(self::reqwest::Error);
+        Json(self::serde_json::Error);
         Io(::std::io::Error);
-        Config(::config::ConfigError);
+        Config(self::config::ConfigError);
     }
 }
