@@ -42,6 +42,13 @@ fn slash_command(body: &str) -> ResponseBox {
 
     serde_urlencoded::from_str::<SlashCommandRequest>(body)
         .ok()
+        .and_then(|command| {
+            if SETTINGS.verify(&command.token) {
+                Some(command)
+            } else {
+                None
+            }
+        })
         .and_then(|command| REGEX_IP.find(&command.text).map(|m| m.as_str().to_owned()))
         .and_then(|sip| ip::get_or_create(&sip, SETTINGS.data_path()))
         .map(generate_ip_message)
