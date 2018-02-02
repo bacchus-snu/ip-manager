@@ -20,6 +20,7 @@
                 {
                     "name": "using",
                     "text": "using",
+                    "style": "primary",
                     "type": "button",
                     "value": "using"
                 }
@@ -38,6 +39,7 @@
                 {
                     "name": "add",
                     "text": "추가",
+                    "style": "primary",
                     "type": "button",
                     "value": "add"
                 }

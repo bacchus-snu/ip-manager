@@ -61,6 +61,16 @@ pub struct Button {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<String>,
     pub value: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub confirm: Option<ButtonConfirmation>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ButtonConfirmation {
+    pub title: String,
+    pub text: String,
+    pub ok_text: String,
+    pub dismiss_text: String,
 }
 
 #[derive(Serialize, Deserialize)]

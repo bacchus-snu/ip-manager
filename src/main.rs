@@ -91,6 +91,7 @@ fn generate_ip_message(entry: Entry) -> Message {
                 } else {
                     "미사용"
                 }.to_owned();
+                button.style = Some(if entry.using { "danger" } else { "primary" }.to_owned());
             });
         });
         edit_attachment!(Interactive(attachment) = attachments[2], {
@@ -103,6 +104,7 @@ fn generate_ip_message(entry: Entry) -> Message {
                     color: None,
                     style: None,
                     value: format!("port-{}", port),
+                    confirm: None,
                 })
                 .chain(
                     vec![
@@ -112,6 +114,7 @@ fn generate_ip_message(entry: Entry) -> Message {
                             color: None,
                             style: Some("primary".to_owned()),
                             value: "add".to_owned(),
+                            confirm: None,
                         },
                     ].into_iter(),
                 )
