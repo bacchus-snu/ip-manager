@@ -1,6 +1,7 @@
 extern crate ip_manager;
 extern crate serde;
 extern crate serde_json;
+extern crate serde_urlencoded;
 extern crate tiny_http;
 
 use tiny_http::{Method, Request, Response, Server};
@@ -30,7 +31,7 @@ fn main() {
 
 fn slash_command(body: &str) -> Result<()> {
     println!("body: {}", body);
-    let command = serde_json::from_str::<SlashCommandRequest>(body)?;
+    let command = serde_urlencoded::from_str::<SlashCommandRequest>(body)?;
     println!("{:?}", command);
     Ok(())
 }
