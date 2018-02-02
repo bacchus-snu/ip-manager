@@ -1,0 +1,87 @@
+{
+    "text": "ip",
+    "attachments": [
+        {
+            "title": "도메인",
+            "text": "domain",
+            "callback_id": "domain",
+            "actions": [
+                {
+                    "name": "set",
+                    "text": "설정",
+                    "type": "button",
+                    "value": "set"
+                }
+            ]
+        },
+        {
+            "title": "사용 여부",
+            "callback_id": "using",
+            "actions": [
+                {
+                    "name": "using",
+                    "type": "select",
+                    "options": [
+                        {
+                            "text": "사용중",
+                            "value": "true"
+                        },
+                        {
+                            "text": "미사용",
+                            "value": "false"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "개방 포트",
+            "callback_id": "port",
+            "actions": [
+                {
+                    "name": "port",
+                    "text": "port",
+                    "type": "button",
+                    "value": "port"
+                },
+                {
+                    "name": "add",
+                    "text": "추가",
+                    "type": "button",
+                    "value": "add"
+                }
+            ]
+        },
+        {
+            "title": "설명",
+            "text": "description",
+            "callback_id": "description",
+            "actions": [
+                {
+                    "name": "set",
+                    "text": "설정",
+                    "type": "button",
+                    "value": "set"
+                }
+            ]
+        },
+        {
+            "title": "확인",
+            "callback_id": "confirm",
+            "actions": [
+                {
+                    "name": "save",
+                    "text": "저장",
+                    "type": "button",
+                    "value": "save"
+                },
+                {
+                    "name": "cancel",
+                    "text": "취소",
+                    "type": "button",
+                    "value": "cancel"
+                }
+            ]
+        }
+    ]
+}

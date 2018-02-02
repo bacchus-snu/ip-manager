@@ -1,0 +1,30 @@
+extern crate ip_manager;
+extern crate serde;
+extern crate serde_json;
+extern crate tiny_http;
+
+use tiny_http::{Method, Request, Response, Server};
+use ip_manager::Result;
+use ip_manager::slack::{Dialog, Message, SlashCommandRequest};
+
+const IP_MESSAGE: &str = include_str!("ip_message.json");
+
+fn main() {
+    let server = Server::http("localhost:8000").unwrap();
+
+    server.incoming_requests().for_each(|mut request| {
+        let resp = match (request.method(), request.url()) {
+            (&Method::Post, "/command") => {
+                slash_command(&mut request).unwrap_or_else(|_| Response::empty(500))
+            }
+            _ => Response::empty(404),
+        };
+        request.respond(resp).unwrap();
+    });
+}
+
+fn slash_command(request: &mut Request) -> Result<Response<std::io::Empty>> {
+    let command = serde_json::from_reader::<_, SlashCommandRequest>(request.as_reader())?;
+    println!("{:?}", command);
+    Ok(Response::empty(200))
+}
