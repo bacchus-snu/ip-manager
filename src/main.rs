@@ -10,7 +10,6 @@ extern crate tiny_http;
 use tiny_http::{Header, Method, Response, ResponseBox, Server};
 use ip_manager::Settings;
 use ip_manager::ip::Entry;
-use ip_manager::ip;
 use ip_manager::slack::*;
 use regex::Regex;
 
@@ -68,7 +67,7 @@ fn handle_slash_command(body: &str) -> ResponseBox {
                     .find(&command.text)
                     .map(|m| m.as_str().to_owned())
                     .map(|sip| {
-                        ip::get(&sip, SETTINGS.data_path())
+                        Entry::from_ip(&sip, SETTINGS.data_path())
                             .map(generate_ip_message)
                             .unwrap_or_else(|| generate_create_new_message(&sip))
                     })
