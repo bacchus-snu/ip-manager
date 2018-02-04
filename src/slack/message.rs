@@ -59,8 +59,6 @@ pub struct Button {
     pub name: String,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub style: Option<String>,
     pub value: String,
     #[serde(skip_serializing_if = "Option::is_none")]

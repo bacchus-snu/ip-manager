@@ -11,8 +11,7 @@ use tiny_http::{Header, Method, Response, ResponseBox, Server};
 use ip_manager::Settings;
 use ip_manager::ip::Entry;
 use ip_manager::ip;
-use ip_manager::slack::{Message, SlashCommandRequest};
-use ip_manager::slack::message::{Action, Attachment, Button};
+use ip_manager::slack::*;
 use regex::Regex;
 
 const IP_MESSAGE: &str = include_str!("json/ip_message.json");
@@ -27,17 +26,16 @@ fn main() {
         let mut body = String::new();
         request.as_reader().read_to_string(&mut body).unwrap();
         let resp: ResponseBox = match (request.method(), request.url()) {
-            (&Method::Post, "//command") => slash_command(&body),
-            (_, "//command") => Response::empty(405).boxed(),
-            (&Method::Post, "//submission") => submission(&body),
-            (_, "//submission") => Response::empty(405).boxed(),
+            (&Method::Post, "//command") => handle_slash_command(&body),
+            (&Method::Post, "//submission") => handle_submission(&body),
+            (_, "//command") | (_, "//submission") => Response::empty(405).boxed(),
             _ => Response::empty(404).boxed(),
         };
         request.respond(resp).unwrap();
     });
 }
 
-fn slash_command(body: &str) -> ResponseBox {
+fn handle_slash_command(body: &str) -> ResponseBox {
     lazy_static! {
         static ref SETTINGS: Settings =
             Settings::try_new().unwrap();
@@ -46,7 +44,7 @@ fn slash_command(body: &str) -> ResponseBox {
             .unwrap();
     }
 
-    serde_urlencoded::from_str::<SlashCommandRequest>(body)
+    serde_urlencoded::from_str::<slash_command::Request>(body)
         .ok()
         .and_then(|command| {
             if !SETTINGS.verify(&command.token) {
@@ -74,7 +72,6 @@ fn slash_command(body: &str) -> ResponseBox {
                             .map(generate_ip_message)
                             .unwrap_or_else(|| generate_create_new_message(&sip))
                     })
-                    .and_then(|message| serde_json::to_string(&message).ok())
                     .map(|s| {
                         Response::from_string(s)
                             .with_status_code(200)
@@ -89,92 +86,63 @@ fn slash_command(body: &str) -> ResponseBox {
         .unwrap_or_else(|| Response::empty(500).boxed())
 }
 
-fn submission(body: &str) -> ResponseBox {
+fn handle_submission(body: &str) -> ResponseBox {
     println!("{}", body);
     Response::empty(501).boxed()
 }
 
-fn generate_ip_message(entry: Entry) -> Message {
-    macro_rules! edit_attachment {
-        ($t:ident($a:ident) = $b:expr, $c:block) => {
-            if let Attachment::$t(ref mut $a) = $b {
-                $a.callback_id.push_str("-");
-                $a.callback_id.push_str(&entry.ip);
-                $c
-            }
-        };
-    }
-
-    macro_rules! edit_action {
-        ($t:ident($a:ident) = $b:expr, $c:block) => {
-            if let Action::$t(ref mut $a) = $b {
-                $c
-            }
-        };
-    }
-
-    let mut message: Message = serde_json::from_str(IP_MESSAGE).unwrap();
-    {
-        message.text = Some(entry.ip.clone());
-        let attachments: &mut Vec<Attachment> = message.attachments.as_mut().unwrap();
-        edit_attachment!(Interactive(attachment) = attachments[0], {
-            edit_action!(Button(button) = attachment.actions[0], {
-                button.text = entry.domain.unwrap_or_else(|| "추가".to_owned());
-            });
-        });
-        edit_attachment!(Interactive(attachment) = attachments[1], {
-            edit_action!(Button(button) = attachment.actions[0], {
-                button.text = if entry.using {
-                    "사용중"
-                } else {
-                    "미사용"
-                }.to_owned();
-                button.style = Some(if entry.using { "danger" } else { "primary" }.to_owned());
-            });
-        });
-        edit_attachment!(Interactive(attachment) = attachments[2], {
-            attachment.actions = entry
+fn generate_ip_message(entry: Entry) -> String {
+    IP_MESSAGE
+        .replace("{callback}", &entry.ip)
+        .replace("{ip}", &entry.ip)
+        .replace("{description}", &entry.description.unwrap_or_default())
+        .replace(
+            "{domain}",
+            &entry
+                .domain
+                .unwrap_or_else(|| "도메인 추가".to_owned()),
+        )
+        .replace(
+            "{using}",
+            if entry.using {
+                "사용중"
+            } else {
+                "미사용"
+            },
+        )
+        .replace(
+            "{using_style}",
+            if entry.using { "danger" } else { "primary" },
+        )
+        .replace(
+            "\"{ports}\"",
+            &serde_json::to_string(&entry
                 .open_ports
                 .into_iter()
-                .map(|port| Button {
-                    name: format!("port-{}", port),
+                .map(|port| message::Button {
+                    name: "port".to_owned(),
                     text: format!("{}", port),
-                    color: None,
                     style: None,
-                    value: format!("port-{}", port),
+                    value: format!("{}", port),
                     confirm: None,
                 })
                 .chain(
                     vec![
-                        Button {
-                            name: "add".to_owned(),
+                        message::Button {
+                            name: "add_port".to_owned(),
                             text: "추가".to_owned(),
-                            color: None,
                             style: Some("primary".to_owned()),
-                            value: "add".to_owned(),
+                            value: "add_port".to_owned(),
                             confirm: None,
                         },
                     ].into_iter(),
                 )
-                .map(Action::Button)
-                .collect();
-        });
-        edit_attachment!(Interactive(attachment) = attachments[3], {
-            attachment.text = entry.description;
-        });
-        edit_attachment!(Interactive(attachment) = attachments[4], {});
-    }
-    message
+                .map(message::Action::Button)
+                .collect::<Vec<message::Action>>())
+                .unwrap(),
+        )
 }
 
-fn generate_create_new_message(ip: &str) -> Message {
-    let mut message: Message = serde_json::from_str(CREATE_NEW_MESSAGE).unwrap();
-    {
-        let attachments: &mut Vec<Attachment> = message.attachments.as_mut().unwrap();
-        if let Attachment::Interactive(ref mut attachment) = attachments[0] {
-            attachment.callback_id.push_str("-");
-            attachment.callback_id.push_str(ip);
-        }
-    }
-    message
+fn generate_create_new_message(ip: &str) -> String {
+    CREATE_NEW_MESSAGE.replace("{callback}", ip)
 }

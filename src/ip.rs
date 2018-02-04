@@ -17,6 +17,16 @@ pub struct Entry {
 }
 
 impl Entry {
+    pub fn new(ip: &str) -> Self {
+        Entry {
+            ip: ip.to_owned(),
+            domain: None,
+            using: false,
+            open_ports: vec![],
+            description: None,
+        }
+    }
+
     pub fn ports_as_string(&self) -> String {
         let mut s = String::new();
         for p in &self.open_ports {
