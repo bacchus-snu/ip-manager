@@ -1,0 +1,23 @@
+{
+    "attachments": [
+        {
+            "text": "IP를 찾을 수 없습니다. 새로 생성하시겠습니까?",
+            "color": "556270",
+            "callback_id": "create_new",
+            "actions": [
+                {
+                    "name": "create",
+                    "text": "생성",
+                    "type": "button",
+                    "value": "create"
+                },
+                {
+                    "name": "cancel",
+                    "text": "취소",
+                    "type": "button",
+                    "value": "cancel"
+                }
+            ]
+        }
+    ]
+}
