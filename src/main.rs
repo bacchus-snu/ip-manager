@@ -28,6 +28,9 @@ fn main() {
         request.as_reader().read_to_string(&mut body).unwrap();
         let resp: ResponseBox = match (request.method(), request.url()) {
             (&Method::Post, "//command") => slash_command(&body),
+            (_, "//command") => Response::empty(405).boxed(),
+            (&Method::Post, "//submission") => submission(&body),
+            (_, "//submission") => Response::empty(405).boxed(),
             _ => Response::empty(404).boxed(),
         };
         request.respond(resp).unwrap();
@@ -84,6 +87,11 @@ fn slash_command(body: &str) -> ResponseBox {
             }
         })
         .unwrap_or_else(|| Response::empty(500).boxed())
+}
+
+fn submission(body: &str) -> ResponseBox {
+    println!("{}", body);
+    Response::empty(501).boxed()
 }
 
 fn generate_ip_message(entry: Entry) -> Message {
