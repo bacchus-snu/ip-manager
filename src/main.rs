@@ -15,7 +15,10 @@ use ip_manager::slack::{Message, SlashCommandRequest};
 use ip_manager::slack::message::{Action, Attachment, Button};
 use regex::Regex;
 
-const RAW_IP_MESSAGE: &str = include_str!("ip_message.json");
+const IP_MESSAGE: &str = include_str!("json/ip_message.json");
+const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
+const NOT_FOUND_MESSAGE: &str = include_str!("json/not_found_message.json");
+const EMPTY_QUERY_MESSAGE: &str = include_str!("json/empty_query_message.json");
 
 fn main() {
     let server = Server::http("localhost:8000").unwrap();
@@ -43,23 +46,42 @@ fn slash_command(body: &str) -> ResponseBox {
     serde_urlencoded::from_str::<SlashCommandRequest>(body)
         .ok()
         .and_then(|command| {
-            if SETTINGS.verify(&command.token) {
-                Some(command)
-            } else {
-                None
-            }
-        })
-        .and_then(|command| REGEX_IP.find(&command.text).map(|m| m.as_str().to_owned()))
-        .and_then(|sip| ip::get_or_create(&sip, SETTINGS.data_path()))
-        .map(generate_ip_message)
-        .and_then(|message| serde_json::to_string(&message).ok())
-        .map(|s| {
-            Response::from_string(s)
-                .with_status_code(200)
-                .with_header(
-                    Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap(),
+            if !SETTINGS.verify(&command.token) {
+                Some(
+                    Response::from_string("Invalid token")
+                        .with_status_code(401)
+                        .boxed(),
                 )
-                .boxed()
+            } else if command.text.is_empty() {
+                Some(
+                    Response::from_string(EMPTY_QUERY_MESSAGE)
+                        .with_status_code(200)
+                        .with_header(
+                            Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
+                                .unwrap(),
+                        )
+                        .boxed(),
+                )
+            } else {
+                REGEX_IP
+                    .find(&command.text)
+                    .map(|m| m.as_str().to_owned())
+                    .map(|sip| {
+                        ip::get(&sip, SETTINGS.data_path())
+                            .map(generate_ip_message)
+                            .unwrap_or_else(|| generate_create_new_message(&sip))
+                    })
+                    .and_then(|message| serde_json::to_string(&message).ok())
+                    .map(|s| {
+                        Response::from_string(s)
+                            .with_status_code(200)
+                            .with_header(
+                                Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
+                                    .unwrap(),
+                            )
+                            .boxed()
+                    })
+            }
         })
         .unwrap_or_else(|| Response::empty(500).boxed())
 }
@@ -74,6 +96,7 @@ fn generate_ip_message(entry: Entry) -> Message {
             }
         };
     }
+
     macro_rules! edit_action {
         ($t:ident($a:ident) = $b:expr, $c:block) => {
             if let Action::$t(ref mut $a) = $b {
@@ -82,7 +105,7 @@ fn generate_ip_message(entry: Entry) -> Message {
         };
     }
 
-    let mut message: Message = serde_json::from_str(RAW_IP_MESSAGE).unwrap();
+    let mut message: Message = serde_json::from_str(IP_MESSAGE).unwrap();
     {
         message.text = Some(entry.ip.clone());
         let attachments: &mut Vec<Attachment> = message.attachments.as_mut().unwrap();
@@ -132,6 +155,18 @@ fn generate_ip_message(entry: Entry) -> Message {
             attachment.text = entry.description;
         });
         edit_attachment!(Interactive(attachment) = attachments[4], {});
+    }
+    message
+}
+
+fn generate_create_new_message(ip: &str) -> Message {
+    let mut message: Message = serde_json::from_str(CREATE_NEW_MESSAGE).unwrap();
+    {
+        let attachments: &mut Vec<Attachment> = message.attachments.as_mut().unwrap();
+        if let Attachment::Interactive(ref mut attachment) = attachments[0] {
+            attachment.callback_id.push_str("-");
+            attachment.callback_id.push_str(ip);
+        }
     }
     message
 }

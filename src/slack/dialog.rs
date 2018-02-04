@@ -71,10 +71,3 @@ pub struct SelectOption {
     pub label: String,
     pub value: String,
 }
-
-#[derive(Deserialize)]
-pub struct Response<R> {
-    pub submission: Vec<R>,
-    pub callback_id: String,
-    pub token: String,
-}
