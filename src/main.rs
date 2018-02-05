@@ -11,7 +11,7 @@ use tiny_http::{Header, Method, Response, ResponseBox, Server};
 use ip_manager::Settings;
 use ip_manager::ip::Entry;
 use ip_manager::slack::*;
-use regex::Regex;
+use regex::{Captures, Regex};
 
 const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
@@ -68,7 +68,7 @@ fn handle_slash_command(body: &str) -> ResponseBox {
                     .map(|m| m.as_str().to_owned())
                     .map(|sip| {
                         Entry::from_ip(&sip, SETTINGS.data_path())
-                            .map(generate_ip_message)
+                            .map(|entry| generate_ip_message(&entry))
                             .unwrap_or_else(|| generate_create_new_message(&sip))
                     })
                     .map(|s| {
@@ -90,40 +90,37 @@ fn handle_submission(body: &str) -> ResponseBox {
     Response::empty(501).boxed()
 }
 
-fn generate_ip_message(entry: Entry) -> String {
-    IP_MESSAGE
-        .replace("{callback}", &entry.ip)
-        .replace("{ip}", &entry.ip)
-        .replace("{description}", &entry.description.unwrap_or_default())
-        .replace(
-            "{domain}",
-            &entry
+fn generate_ip_message(entry: &Entry) -> String {
+    lazy_static! {
+        static ref REGEX_INFOS: Regex =
+            Regex::new(r"(?:/(callback|ip|description|domain|using|using_style|ports)/)+?")
+            .unwrap();
+    }
+    REGEX_INFOS
+        .replace_all(IP_MESSAGE, |caps: &Captures| match &caps[1] {
+            "callback" | "ip" => entry.ip.clone(),
+            "description" => entry.description.clone().unwrap_or_default(),
+            "domain" => entry
                 .domain
+                .clone()
                 .unwrap_or_else(|| "도메인 추가".to_owned()),
-        )
-        .replace(
-            "{using}",
-            if entry.using {
+            "using" => if entry.using {
                 "사용중"
             } else {
                 "미사용"
-            },
-        )
-        .replace(
-            "{using_style}",
-            if entry.using { "danger" } else { "primary" },
-        )
-        .replace(
-            "\"{ports}\"",
-            &serde_json::to_string(&entry
+            }.to_owned(),
+            "using_style" => if entry.using { "danger" } else { "primary" }.to_owned(),
+            "ports" => serde_json::to_string(&entry
                 .open_ports
-                .into_iter()
-                .map(|port| message::Button {
-                    name: "port".to_owned(),
-                    text: format!("{}", port),
-                    style: None,
-                    value: format!("{}", port),
-                    confirm: None,
+                .iter()
+                .map(|port| {
+                    message::Button {
+                        name: "port".to_owned(),
+                        text: format!("{}", port),
+                        style: None,
+                        value: format!("{}", port),
+                        confirm: None,
+                    }
                 })
                 .chain(
                     vec![
@@ -139,9 +136,18 @@ fn generate_ip_message(entry: Entry) -> String {
                 .map(message::Action::Button)
                 .collect::<Vec<message::Action>>())
                 .unwrap(),
-        )
+            _ => String::new(),
+        })
+        .into_owned()
 }
 
 fn generate_create_new_message(ip: &str) -> String {
-    CREATE_NEW_MESSAGE.replace("{callback}", ip)
+    lazy_static! {
+        static ref REGEX_SMALL_INFOS: Regex =
+            Regex::new(r"(?:/(callback|ip)/)+?")
+            .unwrap();
+    }
+    REGEX_SMALL_INFOS
+        .replace_all(CREATE_NEW_MESSAGE, ip)
+        .into_owned()
 }

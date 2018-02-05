@@ -1,21 +1,21 @@
 {
     "attachments": [
         {
-            "title": "{ip}",
-            "text": "{description}",
+            "title": "/ip/",
+            "text": "/description/",
             "color": "69D2E7",
-            "callback_id": "{callback}",
+            "callback_id": "/callback/",
             "actions": [
                 {
                     "name": "edit_domain",
-                    "text": "{domain}",
+                    "text": "/domain/",
                     "type": "button",
                     "value": "edit_domain"
                 },
                 {
                     "name": "toggle_using",
-                    "text": "{using}",
-                    "style": "{using_style}",
+                    "text": "/using/",
+                    "style": "/using_style/",
                     "type": "button",
                     "value": "toggle_using"
                 }
@@ -24,13 +24,13 @@
         {
             "text": "개방 포트",
             "color": "A7DBD8",
-            "callback_id": "{callback}",
-            "actions": "{ports}"
+            "callback_id": "/callback/",
+            "actions": /ports/
         },
         {
             "text": "",
             "color": "E0E4CC",
-            "callback_id": "{callback}",
+            "callback_id": "/callback/",
             "actions": [
                 {
                     "name": "modify_description",

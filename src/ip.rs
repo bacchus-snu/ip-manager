@@ -11,7 +11,7 @@ pub struct Query {
     pub element: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct InnerEntry {
     ip: String,
     #[serde(skip_serializing_if = "Option::is_none")]
