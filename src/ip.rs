@@ -1,12 +1,12 @@
 extern crate toml;
 
 use std::path::{Path, PathBuf};
-use std::fs::{remove_file, File, OpenOptions};
+use std::fs::{read_dir, remove_file, File, OpenOptions};
 use std::io::{Read, Write};
 use std::convert::Into;
 use super::Result;
 
-pub struct Query {
+pub struct SearchResult {
     pub ip: String,
     pub element: String,
 }
@@ -14,12 +14,10 @@ pub struct Query {
 #[derive(Deserialize)]
 struct InnerEntry {
     ip: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] domain: Option<String>,
     using: bool,
     open_ports: Vec<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] description: Option<String>,
 }
 
 impl InnerEntry {
@@ -42,8 +40,7 @@ pub struct Entry {
     pub using: bool,
     pub open_ports: Vec<u32>,
     pub description: Option<String>,
-    #[serde(skip_serializing)]
-    path: PathBuf,
+    #[serde(skip_serializing)] path: PathBuf,
 }
 
 impl Into<InnerEntry> for Entry {
@@ -103,5 +100,48 @@ impl Entry {
         file.write_all(s.as_bytes())?;
 
         Ok(())
+    }
+
+    pub fn list(data_path: &Path) -> Vec<Entry> {
+        read_dir(data_path)
+            .map(|dir_entries| {
+                dir_entries
+                    .filter_map(|dir_entry| dir_entry.ok())
+                    .filter_map(|dir_entry| {
+                        File::open(dir_entry.path()).ok().and_then(|mut file| {
+                            let mut content = String::new();
+                            file.read_to_string(&mut content)
+                                .ok()
+                                .and_then(|_| toml::from_str::<InnerEntry>(&content).ok())
+                                .map(|e| e.into_entry(dir_entry.path()))
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn search(query: &str, data_path: &Path) -> Vec<Entry> {
+        Entry::list(data_path)
+            .into_iter()
+            .filter(|entry| {
+                query.split(' ').filter(|q| !q.is_empty()).any(|q| {
+                    entry.ip.contains(q)
+                        || entry
+                            .domain
+                            .as_ref()
+                            .map(|s| s.contains(q))
+                            .unwrap_or(false)
+                        || (entry.using && q == "사용중")
+                        || (!entry.using && q == "미사용")
+                        || entry.open_ports.contains(&q.parse::<u32>().unwrap_or(0))
+                        || entry
+                            .description
+                            .as_ref()
+                            .map(|s| s.contains(q))
+                            .unwrap_or(false)
+                })
+            })
+            .collect()
     }
 }

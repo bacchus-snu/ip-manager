@@ -3,6 +3,7 @@ extern crate ip_manager;
 extern crate lazy_static;
 extern crate regex;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate serde_urlencoded;
 extern crate tiny_http;
@@ -15,8 +16,6 @@ use regex::{Captures, Regex};
 
 const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
-const NOT_FOUND_MESSAGE: &str = include_str!("json/not_found_message.json");
-const EMPTY_QUERY_MESSAGE: &str = include_str!("json/empty_query_message.json");
 
 fn main() {
     let server = Server::http("localhost:8000").unwrap();
@@ -52,34 +51,35 @@ fn handle_slash_command(body: &str) -> ResponseBox {
                         .with_status_code(401)
                         .boxed(),
                 )
-            } else if command.text.is_empty() {
-                Some(
-                    Response::from_string(EMPTY_QUERY_MESSAGE)
+            } else {
+                if command.text.is_empty() {
+                    Some(generate_list_message(
+                        "IP 목록",
+                        Entry::list(SETTINGS.data_path()),
+                    ))
+                } else if REGEX_IP.is_match(&command.text) {
+                    REGEX_IP
+                        .find(&command.text)
+                        .map(|m| m.as_str().to_owned())
+                        .map(|sip| {
+                            Entry::from_ip(&sip, SETTINGS.data_path())
+                                .map(|entry| generate_ip_message(&entry))
+                                .unwrap_or_else(|| generate_create_new_message(&sip))
+                        })
+                } else {
+                    Some(generate_list_message(
+                        &format!("{} 검색 결과", &command.text),
+                        Entry::search(&command.text, SETTINGS.data_path()),
+                    ))
+                }.map(|s| {
+                    Response::from_string(s)
                         .with_status_code(200)
                         .with_header(
                             Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
                                 .unwrap(),
                         )
-                        .boxed(),
-                )
-            } else {
-                REGEX_IP
-                    .find(&command.text)
-                    .map(|m| m.as_str().to_owned())
-                    .map(|sip| {
-                        Entry::from_ip(&sip, SETTINGS.data_path())
-                            .map(|entry| generate_ip_message(&entry))
-                            .unwrap_or_else(|| generate_create_new_message(&sip))
-                    })
-                    .map(|s| {
-                        Response::from_string(s)
-                            .with_status_code(200)
-                            .with_header(
-                                Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
-                                    .unwrap(),
-                            )
-                            .boxed()
-                    })
+                        .boxed()
+                })
             }
         })
         .unwrap_or_else(|| Response::empty(500).boxed())
@@ -114,28 +114,26 @@ fn generate_ip_message(entry: &Entry) -> String {
                 .open_ports
                 .iter()
                 .map(|port| {
-                    message::Button {
-                        name: "port".to_owned(),
-                        text: format!("{}", port),
-                        style: None,
-                        value: format!("{}", port),
-                        confirm: None,
-                    }
+                    json!({
+                        "name": "port",
+                        "text": format!("{}", port),
+                        "type": "button",
+                        "value": format!("{}", port)
+                    })
                 })
                 .chain(
                     vec![
-                        message::Button {
-                            name: "add_port".to_owned(),
-                            text: "추가".to_owned(),
-                            style: Some("primary".to_owned()),
-                            value: "add_port".to_owned(),
-                            confirm: None,
-                        },
+                        json!({
+                            "name": "add_port",
+                            "text": "추가",
+                            "type": "button",
+                            "style": "primary",
+                            "value": "add_port"
+                    }),
                     ].into_iter(),
                 )
-                .map(message::Action::Button)
-                .collect::<Vec<message::Action>>())
-                .unwrap(),
+                .collect::<Vec<_>>())
+                .unwrap_or_default(),
             _ => String::new(),
         })
         .into_owned()
@@ -150,4 +148,24 @@ fn generate_create_new_message(ip: &str) -> String {
     REGEX_SMALL_INFOS
         .replace_all(CREATE_NEW_MESSAGE, ip)
         .into_owned()
+}
+
+fn generate_list_message(title: &str, entries: Vec<Entry>) -> String {
+    serde_json::to_string(&json!({
+        "attachments": [{
+            "title": title,
+            "color": "A7DBD8",
+            "fields": entries.into_iter()
+                .map(|entry| {json!({
+                    "title": entry.ip,
+                    "value":
+                        entry.domain.map(|s| s + "\n")
+                            .unwrap_or_default() +
+                        &entry.description.map(|s| s + "\n")
+                            .unwrap_or_default() +
+                        if entry.using { "사용중" } else { "미사용" },
+                    "short": true
+                })}).collect::<Vec<_>>()
+        }]
+    })).unwrap_or_default()
 }
