@@ -103,7 +103,7 @@ impl Entry {
     }
 
     pub fn list(data_path: &Path) -> Vec<Entry> {
-        read_dir(data_path)
+        let mut v: Vec<_> = read_dir(data_path)
             .map(|dir_entries| {
                 dir_entries
                     .filter_map(|dir_entry| dir_entry.ok())
@@ -118,7 +118,23 @@ impl Entry {
                     })
                     .collect()
             })
-            .unwrap_or_default()
+            .unwrap_or_default();
+        v.sort_unstable_by(|a, b| {
+            let aa = a.ip
+                .split(".")
+                .map(|i| i.parse::<u32>().unwrap())
+                .collect::<Vec<_>>();
+            let bb = b.ip
+                .split(".")
+                .map(|i| i.parse::<u32>().unwrap())
+                .collect::<Vec<_>>();
+            aa[0]
+                .cmp(&bb[0])
+                .then_with(|| aa[1].cmp(&bb[1]))
+                .then_with(|| aa[2].cmp(&bb[2]))
+                .then_with(|| aa[3].cmp(&bb[3]))
+        });
+        v
     }
 
     pub fn search(query: &str, data_path: &Path) -> Vec<Entry> {
