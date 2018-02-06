@@ -74,16 +74,16 @@ pub fn handle_submission(body: &str) -> Response {
                     let mut split = interactive.callback_id.split('-');
                     let typ = split.next().unwrap();
                     let para = split.next().unwrap();
-                    match typ.as_ref() {
-                        "ip" => ip::Entry::from_ip(&para, SETTINGS.data_path())
+                    match typ {
+                        "ip" => ip::Entry::from_ip(para, SETTINGS.data_path())
                             .map(|mut entry| {
                                 let action = &interactive.actions[0];
                                 match action.name.as_ref() {
                                     "edit_domain" => {
                                         slack::dialog::show_edit_domain_dialog(
                                             &entry,
-                                            SETTINGS.token(),
                                             &interactive.trigger_id,
+                                            SETTINGS.token(),
                                         ).unwrap();
                                         Response::Empty
                                     }
@@ -96,24 +96,24 @@ pub fn handle_submission(body: &str) -> Response {
                                         slack::dialog::show_edit_port_dialog(
                                             &entry.ip,
                                             &action.value,
-                                            SETTINGS.token(),
                                             &interactive.trigger_id,
+                                            SETTINGS.token(),
                                         ).unwrap();
                                         Response::Empty
                                     }
                                     "add_port" => {
                                         slack::dialog::show_add_port_dialog(
                                             &entry.ip,
-                                            SETTINGS.token(),
                                             &interactive.trigger_id,
+                                            SETTINGS.token(),
                                         ).unwrap();
                                         Response::Empty
                                     }
                                     "edit_description" => {
                                         slack::dialog::show_edit_description_dialog(
                                             &entry,
-                                            SETTINGS.token(),
                                             &interactive.trigger_id,
+                                            SETTINGS.token(),
                                         ).unwrap();
                                         Response::Empty
                                     }
@@ -132,14 +132,14 @@ pub fn handle_submission(body: &str) -> Response {
                             interactive.actions[0].value.parse::<usize>().unwrap() + 1,
                         )),
                         "query" => Response::Json(slack::message::generate_query_message(
-                            &para,
-                            &ip::Entry::search(&para, SETTINGS.data_path()),
+                            para,
+                            &ip::Entry::search(para, SETTINGS.data_path()),
                             interactive.actions[0].value.parse::<usize>().unwrap() + 1,
                         )),
                         "create_new" => {
                             Response::Json(if interactive.actions[0].value == "create_new_entry" {
                                 slack::message::generate_ip_message(
-                                    &ip::Entry::new(&para, SETTINGS.data_path()).unwrap(),
+                                    &ip::Entry::new(para, SETTINGS.data_path()).unwrap(),
                                 )
                             } else {
                                 slack::message::generate_cancelled_message()
@@ -149,8 +149,48 @@ pub fn handle_submission(body: &str) -> Response {
                     }
                 }
                 Submission::Dialog(dialog) => {
-                    println!("{:?}", dialog);
-                    Response::Unimplemented
+                    let mut split = dialog.callback_id.split('-');
+                    let typ = split.next().unwrap();
+                    let ip = split.next().unwrap();
+                    ip::Entry::from_ip(ip, SETTINGS.data_path())
+                        .map(|mut entry| {
+                            match typ {
+                                "edit_domain" => {
+                                    entry.domain = Some(dialog.submission["domain"].clone());
+                                }
+                                "edit_description" => {
+                                    entry.description =
+                                        Some(dialog.submission["description"].clone());
+                                }
+                                "edit_port" => {
+                                    let (key, val) = dialog.submission.iter().nth(0).unwrap();
+                                    if let Some(i) = entry
+                                        .open_ports
+                                        .iter()
+                                        .position(|p| format!("{}", p) == *key)
+                                    {
+                                        if let Some(p) = entry.open_ports.get_mut(i) {
+                                            *p = val.parse().unwrap();
+                                        }
+                                    }
+                                }
+                                "add_port" => {
+                                    entry.open_ports.append(&mut dialog
+                                        .submission
+                                        .values()
+                                        .map(|k| k.parse().unwrap())
+                                        .collect());
+                                }
+                                _ => (),
+                            };
+                            entry
+                        })
+                        .map(|entry| {
+                            Response::Json(slack::message::generate_ip_message(&entry))
+                        })
+                        .unwrap_or_else(|| {
+                            Response::Json(slack::message::generate_inexist_message())
+                        })
                 }
             }
         })

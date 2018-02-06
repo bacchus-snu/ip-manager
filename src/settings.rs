@@ -10,7 +10,6 @@ pub struct Settings {
     verification_token: String,
     api_token: String,
     data_path: String,
-    fallback_url: Option<String>,
 }
 
 impl Settings {
@@ -35,9 +34,5 @@ impl Settings {
 
     pub fn data_path(&self) -> &Path {
         Path::new(&self.data_path)
-    }
-
-    pub fn fallback_url(&self) -> Option<&str> {
-        self.fallback_url.as_ref().map(|s| s.as_ref())
     }
 }

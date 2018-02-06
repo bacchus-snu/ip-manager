@@ -6,6 +6,7 @@ use ip::Entry;
 use errors::Result;
 
 const EDIT_DIALOG: &str = include_str!("json/edit_dialog.json");
+const EDIT_DESCRIPTION_DIALOG: &str = include_str!("json/edit_description_dialog.json");
 const ADD_PORT_DIALOG: &str = include_str!("json/add_port_dialog.json");
 
 fn show(dialog: &str, trigger_id: &str, token: &str) -> Result<()> {
@@ -44,7 +45,7 @@ fn generate_edit_dialog(
         .into_owned()
 }
 
-pub fn show_edit_domain_dialog(entry: &Entry, token: &str, trigger_id: &str) -> Result<()> {
+pub fn show_edit_domain_dialog(entry: &Entry, trigger_id: &str, token: &str) -> Result<()> {
     show(
         &generate_edit_dialog(
             "도메인 추가/수정",
@@ -59,29 +60,36 @@ pub fn show_edit_domain_dialog(entry: &Entry, token: &str, trigger_id: &str) -> 
     )
 }
 
-pub fn show_edit_description_dialog(entry: &Entry, token: &str, trigger_id: &str) -> Result<()> {
+pub fn show_edit_description_dialog(entry: &Entry, trigger_id: &str, token: &str) -> Result<()> {
+    lazy_static! {
+        static ref REGEX_DESCRIPTION: regex::Regex =
+            regex::Regex::new(r"(?:/(ip|value)/)+?")
+            .unwrap();
+    }
     show(
-        &generate_edit_dialog(
-            "설명 추가/수정",
-            &entry.ip,
-            "edit_description",
-            "설명",
-            "description",
-            &entry.description.clone().unwrap_or_default(),
-        ),
+        &REGEX_DESCRIPTION
+            .replace_all(
+                EDIT_DESCRIPTION_DIALOG,
+                |caps: &regex::Captures| match &caps[1] {
+                    "ip" => entry.ip.clone(),
+                    "value" => entry.description.clone().unwrap_or_default(),
+                    _ => String::new(),
+                },
+            )
+            .into_owned(),
         trigger_id,
         token,
     )
 }
 
-pub fn show_edit_port_dialog(ip: &str, port: &str, token: &str, trigger_id: &str) -> Result<()> {
+pub fn show_edit_port_dialog(ip: &str, port: &str, trigger_id: &str, token: &str) -> Result<()> {
     show(
-        &generate_edit_dialog("포트 수정", ip, "edit_port", "포트", "port", port),
+        &generate_edit_dialog("포트 수정", ip, "edit_port", "포트", port, port),
         trigger_id,
         token,
     )
 }
 
-pub fn show_add_port_dialog(ip: &str, token: &str, trigger_id: &str) -> Result<()> {
+pub fn show_add_port_dialog(ip: &str, trigger_id: &str, token: &str) -> Result<()> {
     show(&ADD_PORT_DIALOG.replace("/ip/", ip), trigger_id, token)
 }
