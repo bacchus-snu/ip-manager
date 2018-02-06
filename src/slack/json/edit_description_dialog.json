@@ -7,7 +7,8 @@
             "type": "textarea",
             "label": "설명",
             "name": "description",
-            "value": "/value/"
+            "value": "/value/",
+            "optional": true
         }
     ]
 }

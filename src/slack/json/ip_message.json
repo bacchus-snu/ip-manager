@@ -39,6 +39,12 @@
                     "value": "edit_description"
                 },
                 {
+                    "name": "refresh",
+                    "text": "새로고침",
+                    "type": "button",
+                    "value": "refresh"
+                },
+                {
                     "name": "delete_entry",
                     "text": "삭제",
                     "style": "danger",

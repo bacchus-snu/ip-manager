@@ -117,6 +117,9 @@ pub fn handle_submission(body: &str) -> Response {
                                         ).unwrap();
                                         Response::Empty
                                     }
+                                    "refresh" => {
+                                        Response::Json(slack::message::generate_ip_message(&entry))
+                                    }
                                     "delete_entry" => {
                                         entry.delete().unwrap();
                                         Response::Json(slack::message::generate_deleted_message())
@@ -156,12 +159,19 @@ pub fn handle_submission(body: &str) -> Response {
                         .map(|mut entry| {
                             match typ {
                                 "edit_domain" => {
-                                    entry.domain = Some(dialog.submission["domain"].clone());
+                                    if let Some(ref domain) = dialog.submission["domain"] {
+                                        entry.domain = Some(domain.clone());
+                                    } else {
+                                        entry.domain = None;
+                                    }
                                 }
-                                "edit_description" => {
-                                    entry.description =
-                                        Some(dialog.submission["description"].clone());
-                                }
+                                "edit_description" => if let Some(ref description) =
+                                    dialog.submission["description"]
+                                {
+                                    entry.description = Some(description.clone());
+                                } else {
+                                    entry.description = None;
+                                },
                                 "edit_port" => {
                                     let (key, val) = dialog.submission.iter().nth(0).unwrap();
                                     if let Some(i) = entry
@@ -169,8 +179,12 @@ pub fn handle_submission(body: &str) -> Response {
                                         .iter()
                                         .position(|p| format!("{}", p) == *key)
                                     {
-                                        if let Some(p) = entry.open_ports.get_mut(i) {
-                                            *p = val.parse().unwrap();
+                                        if let &Some(ref port) = val {
+                                            if let Some(p) = entry.open_ports.get_mut(i) {
+                                                *p = (*port).parse().unwrap();
+                                            }
+                                        } else {
+                                            entry.open_ports.remove(i);
                                         }
                                     }
                                 }
@@ -178,19 +192,15 @@ pub fn handle_submission(body: &str) -> Response {
                                     entry.open_ports.append(&mut dialog
                                         .submission
                                         .values()
+                                        .filter_map(|k| k.clone())
                                         .map(|k| k.parse().unwrap())
                                         .collect());
                                 }
                                 _ => (),
                             };
-                            entry
                         })
-                        .map(|entry| {
-                            Response::Json(slack::message::generate_ip_message(&entry))
-                        })
-                        .unwrap_or_else(|| {
-                            Response::Json(slack::message::generate_inexist_message())
-                        })
+                        .map(|_| Response::Empty)
+                        .unwrap_or_else(|| Response::Error)
                 }
             }
         })

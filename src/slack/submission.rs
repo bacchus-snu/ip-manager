@@ -55,7 +55,7 @@ pub struct Action {
 
 #[derive(Deserialize, Debug)]
 pub struct Dialog {
-    pub submission: HashMap<String, String>,
+    pub submission: HashMap<String, Option<String>>,
     pub callback_id: String,
     pub token: String,
 }
