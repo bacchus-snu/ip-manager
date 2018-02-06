@@ -1,86 +1,109 @@
-#[derive(Serialize, Deserialize)]
-pub struct Message {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    pub attachments: Option<Vec<Attachment>>,
+extern crate regex;
+extern crate serde_json;
+
+use ip::Entry;
+
+const IP_MESSAGE: &str = include_str!("json/ip_message.json");
+const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
+const LIST_MESSAGE: &str = include_str!("json/list_message.json");
+
+fn generate_port_buttons(port: &[u32]) -> String {
+    serde_json::to_string(&port.iter()
+        .map(|port| {
+            json!({
+                "name": "port",
+                "text": format!("{}", port),
+                "type": "button",
+                "value": format!("{}", port)
+            })
+        })
+        .chain(
+            vec![
+                json!({
+                    "name": "add_port",
+                    "text": "추가",
+                    "type": "button",
+                    "style": "primary",
+                    "value": "add_port"
+            }),
+            ].into_iter(),
+        )
+        .collect::<Vec<_>>())
+        .unwrap_or_default()
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Attachment {
-    Basic(BasicAttachment),
-    Interactive(InteractiveAttachment),
+pub fn generate_ip_message(entry: &Entry) -> String {
+    lazy_static! {
+        static ref REGEX_INFOS: regex::Regex =
+            regex::Regex::new(r"(?:/(callback|ip|description|domain|using|using_style|ports)/)+?")
+            .unwrap();
+    }
+    REGEX_INFOS
+        .replace_all(IP_MESSAGE, |caps: &regex::Captures| match &caps[1] {
+            "callback" | "ip" => entry.ip.clone(),
+            "description" => entry.description.clone().unwrap_or_default(),
+            "domain" => entry
+                .domain
+                .clone()
+                .unwrap_or_else(|| "도메인 추가".to_owned()),
+            "using" => if entry.using {
+                "사용중"
+            } else {
+                "미사용"
+            }.to_owned(),
+            "using_style" => if entry.using { "danger" } else { "primary" }.to_owned(),
+            "ports" => generate_port_buttons(&entry.open_ports),
+            _ => String::new(),
+        })
+        .into_owned()
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct BasicAttachment {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    pub fields: Vec<AttachmentField>,
+pub fn generate_create_new_message(ip: &str) -> String {
+    lazy_static! {
+        static ref REGEX_SMALL_INFOS: regex::Regex =
+            regex::Regex::new(r"(?:/(callback|ip)/)+?")
+            .unwrap();
+    }
+    REGEX_SMALL_INFOS
+        .replace_all(CREATE_NEW_MESSAGE, ip)
+        .into_owned()
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct AttachmentField {
-    pub title: String,
-    pub value: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub short: Option<bool>,
+pub fn generate_list_fields(entries: &[Entry], page: usize) -> String {
+    serde_json::to_string(&entries
+        .iter()
+        .take((page + 1) * 8)
+        .map(|entry| {
+            json!({
+                "title": entry.ip,
+                "value":
+                    entry.domain.as_ref()
+                        .map(|s| format!("{}\n", s))
+                        .unwrap_or_default() +
+                    &entry.description.as_ref()
+                        .map(|s| format!("{}\n", s))
+                        .unwrap_or_default() +
+                    if entry.using { "사용중" } else { "미사용" },
+                "short": true
+            })
+        })
+        .collect::<Vec<_>>())
+        .unwrap_or_default()
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct InteractiveAttachment {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub title: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    pub callback_id: String,
-    pub actions: Vec<Action>,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum Action {
-    #[serde(rename = "button")] Button(Button),
-    #[serde(rename = "select")] Select(Select),
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Button {
-    pub name: String,
-    pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub style: Option<String>,
-    pub value: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub confirm: Option<ButtonConfirmation>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ButtonConfirmation {
-    pub title: String,
-    pub text: String,
-    pub ok_text: String,
-    pub dismiss_text: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Select {
-    pub name: String,
-    pub options: Vec<SelectOption>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct SelectOption {
-    pub text: String,
-    pub value: String,
+pub fn generate_list_message(title: &str, query: &str, entries: &[Entry], page: usize) -> String {
+    lazy_static! {
+        static ref REGEX_LIST_INFOS: regex::Regex =
+            regex::Regex::new(r"(?:/(title|fields|callback|value)/)+?")
+            .unwrap();
+    }
+    REGEX_LIST_INFOS
+        .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
+            "title" => title.to_owned(),
+            "fields" => generate_list_fields(entries, page),
+            "callback" => query.to_owned(),
+            "value" => format!("{}", page),
+            _ => String::new(),
+        })
+        .into_owned()
 }

@@ -121,11 +121,11 @@ impl Entry {
             .unwrap_or_default();
         v.sort_unstable_by(|a, b| {
             let aa = a.ip
-                .split(".")
+                .split('.')
                 .map(|i| i.parse::<u32>().unwrap())
                 .collect::<Vec<_>>();
             let bb = b.ip
-                .split(".")
+                .split('.')
                 .map(|i| i.parse::<u32>().unwrap())
                 .collect::<Vec<_>>();
             aa[0]
