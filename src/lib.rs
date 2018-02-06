@@ -156,7 +156,7 @@ pub fn handle_submission(body: &str) -> Response {
                     let typ = split.next().unwrap();
                     let ip = split.next().unwrap();
                     ip::Entry::from_ip(ip, SETTINGS.data_path())
-                        .map(|mut entry| {
+                        .and_then(|mut entry| {
                             match typ {
                                 "edit_domain" => {
                                     if let Some(ref domain) = dialog.submission["domain"] {
@@ -198,6 +198,7 @@ pub fn handle_submission(body: &str) -> Response {
                                 }
                                 _ => (),
                             };
+                            entry.save().ok()
                         })
                         .map(|_| Response::Empty)
                         .unwrap_or_else(|| Response::Error)
