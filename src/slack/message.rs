@@ -1,4 +1,5 @@
 extern crate regex;
+extern crate reqwest;
 extern crate serde_json;
 
 use ip::Entry;
@@ -7,14 +8,14 @@ const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
 const LIST_MESSAGE: &str = include_str!("json/list_message.json");
 
-fn generate_port_buttons(ip: &str, port: &[u32]) -> String {
+fn generate_port_buttons(port: &[u32]) -> String {
     serde_json::to_string(&port.iter()
         .map(|port| {
             json!({
                 "name": "edit_port",
                 "text": format!("{}", port),
                 "type": "button",
-                "value": format!("{}-{}", ip, port)
+                "value": format!("{}", port)
             })
         })
         .chain(
@@ -24,7 +25,7 @@ fn generate_port_buttons(ip: &str, port: &[u32]) -> String {
                     "text": "추가",
                     "type": "button",
                     "style": "primary",
-                    "value": ip
+                    "value": "add_port"
             }),
             ].into_iter(),
         )
@@ -52,7 +53,7 @@ pub fn generate_ip_message(entry: &Entry) -> String {
                 "미사용"
             }.to_owned(),
             "using_style" => if entry.using { "danger" } else { "primary" }.to_owned(),
-            "ports" => generate_port_buttons(&entry.ip, &entry.open_ports),
+            "ports" => generate_port_buttons(&entry.open_ports),
             _ => String::new(),
         })
         .into_owned()
@@ -62,7 +63,7 @@ pub fn generate_create_new_message(ip: &str) -> String {
     CREATE_NEW_MESSAGE.replace("/ip/", ip)
 }
 
-pub fn generate_list_fields(entries: &[Entry], page: usize) -> String {
+fn generate_list_fields(entries: &[Entry], page: usize) -> String {
     serde_json::to_string(&entries
         .iter()
         .take((page + 1) * 8)
@@ -94,7 +95,7 @@ pub fn generate_list_message(entries: &[Entry], page: usize) -> String {
         .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
             "title" => "IP 목록".to_owned(),
             "fields" => generate_list_fields(entries, page),
-            "callback" => "list".to_owned(),
+            "callback" => "list-list".to_owned(),
             "value" => format!("{}", page),
             _ => String::new(),
         })
@@ -111,9 +112,21 @@ pub fn generate_query_message(query: &str, entries: &[Entry], page: usize) -> St
         .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
             "title" => format!("{} 검색 결과", query),
             "fields" => generate_list_fields(entries, page),
-            "callback" => "query".to_owned(),
-            "value" => format!("{}-{}", query, page),
+            "callback" => format!("query-{}", query),
+            "value" => format!("{}", page),
             _ => String::new(),
         })
         .into_owned()
+}
+
+pub fn generate_cancelled_message() -> String {
+    "{ \"text\": \"취소되었습니다.\" }".to_owned()
+}
+
+pub fn generate_deleted_message() -> String {
+    "{ \"text\": \"삭제되었습니다.\" }".to_owned()
+}
+
+pub fn generate_inexist_message() -> String {
+    "{ \"text\": \"존재하지 않는 IP 입니다.\" }".to_owned()
 }

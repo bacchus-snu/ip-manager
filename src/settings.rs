@@ -3,7 +3,7 @@ extern crate config;
 use std::env::args;
 use std::path::Path;
 use self::config::{Config, File};
-use super::Result;
+use errors::Result;
 
 #[derive(Deserialize)]
 pub struct Settings {

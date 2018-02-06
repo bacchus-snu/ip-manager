@@ -1,8 +1,8 @@
+extern crate reqwest;
+extern crate serde;
+
 pub mod message;
-
 pub mod dialog;
-pub use self::dialog::Dialog;
-
 pub mod submission;
 
 pub mod slash_command {
@@ -37,4 +37,23 @@ pub mod slash_command {
             serde_urlencoded::from_str(s).map_err(|e| e.into())
         }
     }
+}
+
+use errors::Result;
+
+fn request_api<T>(api: &str, payload: T, token: &str) -> Result<()>
+where
+    T: serde::ser::Serialize,
+{
+    use self::reqwest::header::{qitem, AcceptCharset, Authorization, Charset, Headers};
+
+    let mut headers = Headers::new();
+    headers.set(Authorization(format!("Bearer {}", token)));
+    headers.set(AcceptCharset(vec![qitem(Charset::Ext("utf-8".to_owned()))]));
+    reqwest::Client::new()
+        .post(&format!("https://slack.com/api/{}", api))
+        .headers(headers)
+        .json(&payload)
+        .send()?;
+    Ok(())
 }

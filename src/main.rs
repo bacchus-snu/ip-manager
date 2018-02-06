@@ -28,6 +28,7 @@ fn resp_into_resp(resp: Response) -> ResponseBox {
     match resp {
         Response::Unimplemented => tiny_http::Response::empty(501).boxed(),
         Response::Unauthorized => tiny_http::Response::empty(401).boxed(),
+        Response::Empty => tiny_http::Response::empty(200).boxed(),
         Response::Json(s) => tiny_http::Response::from_string(s)
             .with_status_code(200)
             .with_header(

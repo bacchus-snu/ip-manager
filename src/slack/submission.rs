@@ -40,6 +40,8 @@ impl Submission {
 pub struct Interactive {
     pub actions: Vec<Action>,
     pub callback_id: String,
+    pub channel: Channel,
+    pub message_ts: String,
     pub token: String,
     pub response_url: String,
     pub trigger_id: String,
@@ -58,4 +60,10 @@ pub struct Dialog {
     pub callback_id: String,
     pub token: String,
     pub trigger_id: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Channel {
+    pub id: String,
+    pub name: String,
 }

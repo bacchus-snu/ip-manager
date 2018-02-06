@@ -1,0 +1,13 @@
+{
+    "callback_id": "/callback/",
+    "title": "/title/",
+    "submit_label": "확인",
+    "elements": [
+        {
+            "type": "text",
+            "label": "/label/",
+            "name": "/name/",
+            "value": "/value/"
+        }
+    ]
+}

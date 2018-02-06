@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::fs::{read_dir, remove_file, File, OpenOptions};
 use std::io::{Read, Write};
 use std::convert::Into;
-use super::Result;
+use errors::Result;
 
 #[derive(Deserialize)]
 struct InnerEntry {
@@ -83,9 +83,8 @@ impl Entry {
             .map(|ie| ie.into_entry(p))
     }
 
-    pub fn delete(&self, data_path: &Path) -> Result<()> {
-        let p = data_path.join(Path::new(&self.ip.replace(".", "-")).with_extension("toml"));
-        remove_file(p)?;
+    pub fn delete(&self) -> Result<()> {
+        remove_file(&self.path)?;
         Ok(())
     }
 

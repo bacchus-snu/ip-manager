@@ -8,23 +8,20 @@ extern crate serde_derive;
 #[macro_use]
 extern crate serde_json;
 
-pub mod errors;
-pub use errors::{Error, ErrorKind, Result};
-
-pub mod settings;
-pub use settings::Settings;
-
-pub mod slack;
-pub mod ip;
+mod errors;
+mod settings;
+mod slack;
+mod ip;
 
 lazy_static! {
-    static ref SETTINGS: Settings =
-        Settings::try_new().unwrap();
+    static ref SETTINGS: settings::Settings =
+        settings::Settings::try_new().unwrap();
 }
 
 pub enum Response {
     Unimplemented,
     Unauthorized,
+    Empty,
     Json(String),
     Error,
 }
@@ -74,8 +71,82 @@ pub fn handle_submission(body: &str) -> Response {
             use slack::submission::Submission;
             match submission {
                 Submission::Interactive(interactive) => {
-                    println!("{:?}", interactive);
-                    Response::Unimplemented
+                    let mut split = interactive.callback_id.split('-');
+                    let typ = split.next().unwrap();
+                    let para = split.next().unwrap();
+                    match typ.as_ref() {
+                        "ip" => ip::Entry::from_ip(&para, SETTINGS.data_path())
+                            .map(|mut entry| {
+                                let action = &interactive.actions[0];
+                                match action.name.as_ref() {
+                                    "edit_domain" => {
+                                        slack::dialog::show_edit_domain_dialog(
+                                            &entry,
+                                            SETTINGS.token(),
+                                            &interactive.trigger_id,
+                                        ).unwrap();
+                                        Response::Empty
+                                    }
+                                    "toggle_using" => {
+                                        entry.using = !entry.using;
+                                        entry.save().unwrap();
+                                        Response::Json(slack::message::generate_ip_message(&entry))
+                                    }
+                                    "edit_port" => {
+                                        slack::dialog::show_edit_port_dialog(
+                                            &entry.ip,
+                                            &action.value,
+                                            SETTINGS.token(),
+                                            &interactive.trigger_id,
+                                        ).unwrap();
+                                        Response::Empty
+                                    }
+                                    "add_port" => {
+                                        slack::dialog::show_add_port_dialog(
+                                            &entry.ip,
+                                            SETTINGS.token(),
+                                            &interactive.trigger_id,
+                                        ).unwrap();
+                                        Response::Empty
+                                    }
+                                    "edit_description" => {
+                                        slack::dialog::show_edit_description_dialog(
+                                            &entry,
+                                            SETTINGS.token(),
+                                            &interactive.trigger_id,
+                                        ).unwrap();
+                                        Response::Empty
+                                    }
+                                    "delete_entry" => {
+                                        entry.delete().unwrap();
+                                        Response::Json(slack::message::generate_deleted_message())
+                                    }
+                                    _ => Response::Unimplemented,
+                                }
+                            })
+                            .unwrap_or_else(|| {
+                                Response::Json(slack::message::generate_inexist_message())
+                            }),
+                        "list" => Response::Json(slack::message::generate_list_message(
+                            &ip::Entry::list(SETTINGS.data_path()),
+                            interactive.actions[0].value.parse::<usize>().unwrap() + 1,
+                        )),
+                        "query" => Response::Json(slack::message::generate_query_message(
+                            &para,
+                            &ip::Entry::search(&para, SETTINGS.data_path()),
+                            interactive.actions[0].value.parse::<usize>().unwrap() + 1,
+                        )),
+                        "create_new" => {
+                            Response::Json(if interactive.actions[0].value == "create_new_entry" {
+                                slack::message::generate_ip_message(
+                                    &ip::Entry::new(&para, SETTINGS.data_path()).unwrap(),
+                                )
+                            } else {
+                                slack::message::generate_cancelled_message()
+                            })
+                        }
+                        _ => Response::Unimplemented,
+                    }
                 }
                 Submission::Dialog(dialog) => {
                     println!("{:?}", dialog);
