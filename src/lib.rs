@@ -68,6 +68,20 @@ pub fn handle_slash_command(body: &str) -> Response {
 }
 
 pub fn handle_submission(body: &str) -> Response {
-    println!("{}", body);
-    Response::Unimplemented
+    slack::submission::Submission::from_str(body)
+        .ok()
+        .map(|submission| {
+            use slack::submission::Submission;
+            match submission {
+                Submission::Interactive(interactive) => {
+                    println!("{:?}", interactive);
+                    Response::Unimplemented
+                },
+                Submission::Dialog(dialog) => {
+                    println!("{:?}", dialog);
+                    Response::Unimplemented
+                },
+            }
+        })
+        .unwrap_or_else(|| Response::Error)
 }
