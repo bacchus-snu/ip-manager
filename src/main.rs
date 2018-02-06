@@ -16,6 +16,7 @@ use regex::{Captures, Regex};
 
 const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
+const LIST_MESSAGE: &str = include_str!("json/list_message.json");
 
 fn main() {
     let server = Server::http("localhost:8000").unwrap();
@@ -55,7 +56,9 @@ fn handle_slash_command(body: &str) -> ResponseBox {
                 if command.text.is_empty() {
                     Some(generate_list_message(
                         "IP 목록",
+                        "",
                         Entry::list(SETTINGS.data_path()),
+                        0,
                     ))
                 } else if REGEX_IP.is_match(&command.text) {
                     REGEX_IP
@@ -69,7 +72,9 @@ fn handle_slash_command(body: &str) -> ResponseBox {
                 } else {
                     Some(generate_list_message(
                         &format!("{} 검색 결과", &command.text),
+                        &command.text,
                         Entry::search(&command.text, SETTINGS.data_path()),
+                        0,
                     ))
                 }.map(|s| {
                     Response::from_string(s)
@@ -150,22 +155,37 @@ fn generate_create_new_message(ip: &str) -> String {
         .into_owned()
 }
 
-fn generate_list_message(title: &str, entries: Vec<Entry>) -> String {
-    serde_json::to_string(&json!({
-        "attachments": [{
-            "title": title,
-            "color": "A7DBD8",
-            "fields": entries.into_iter()
-                .map(|entry| {json!({
-                    "title": entry.ip,
-                    "value":
-                        entry.domain.map(|s| s + "\n")
-                            .unwrap_or_default() +
-                        &entry.description.map(|s| s + "\n")
-                            .unwrap_or_default() +
-                        if entry.using { "사용중" } else { "미사용" },
-                    "short": true
-                })}).collect::<Vec<_>>()
-        }]
-    })).unwrap_or_default()
+fn generate_list_message(title: &str, query: &str, entries: Vec<Entry>, page: usize) -> String {
+    lazy_static! {
+        static ref REGEX_LIST_INFOS: Regex =
+            Regex::new(r"(?:/(title|fields|callback|value)/)+?")
+            .unwrap();
+    }
+    REGEX_LIST_INFOS
+        .replace_all(LIST_MESSAGE, |caps: &Captures| match &caps[1] {
+            "title" => title.to_owned(),
+            "fields" => serde_json::to_string(&entries
+                .iter()
+                .take((page + 1) * 8)
+                .map(|entry| {
+                    json!({
+                            "title": entry.ip,
+                            "value":
+                                entry.domain.as_ref()
+                                    .map(|s| format!("{}\n", s))
+                                    .unwrap_or_default() +
+                                &entry.description.as_ref()
+                                    .map(|s| format!("{}\n", s))
+                                    .unwrap_or_default() +
+                                if entry.using { "사용중" } else { "미사용" },
+                            "short": true
+                        })
+                })
+                .collect::<Vec<_>>())
+                .unwrap_or_default(),
+            "callback" => query.to_owned(),
+            "value" => format!("{}", page),
+            _ => String::new(),
+        })
+        .into_owned()
 }
