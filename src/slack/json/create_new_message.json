@@ -3,14 +3,14 @@
         {
             "text": "/ip/를 찾을 수 없습니다. 새로 생성하시겠습니까?",
             "color": "556270",
-            "callback_id": "/callback/",
+            "callback_id": "create_new",
             "actions": [
                 {
                     "name": "create_new_entry",
                     "text": "생성",
                     "type": "button",
                     "style": "primary",
-                    "value": "create_new_entry"
+                    "value": "/ip/"
                 },
                 {
                     "name": "create_cancel",

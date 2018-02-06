@@ -7,14 +7,14 @@ const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
 const LIST_MESSAGE: &str = include_str!("json/list_message.json");
 
-fn generate_port_buttons(port: &[u32]) -> String {
+fn generate_port_buttons(ip: &str, port: &[u32]) -> String {
     serde_json::to_string(&port.iter()
         .map(|port| {
             json!({
-                "name": "port",
+                "name": "edit_port",
                 "text": format!("{}", port),
                 "type": "button",
-                "value": format!("{}", port)
+                "value": format!("{}-{}", ip, port)
             })
         })
         .chain(
@@ -24,7 +24,7 @@ fn generate_port_buttons(port: &[u32]) -> String {
                     "text": "추가",
                     "type": "button",
                     "style": "primary",
-                    "value": "add_port"
+                    "value": ip
             }),
             ].into_iter(),
         )
@@ -35,12 +35,12 @@ fn generate_port_buttons(port: &[u32]) -> String {
 pub fn generate_ip_message(entry: &Entry) -> String {
     lazy_static! {
         static ref REGEX_INFOS: regex::Regex =
-            regex::Regex::new(r"(?:/(callback|ip|description|domain|using|using_style|ports)/)+?")
+            regex::Regex::new(r"(?:/(ip|description|domain|using|using_style|ports)/)+?")
             .unwrap();
     }
     REGEX_INFOS
         .replace_all(IP_MESSAGE, |caps: &regex::Captures| match &caps[1] {
-            "callback" | "ip" => entry.ip.clone(),
+            "ip" => entry.ip.clone(),
             "description" => entry.description.clone().unwrap_or_default(),
             "domain" => entry
                 .domain
@@ -52,21 +52,14 @@ pub fn generate_ip_message(entry: &Entry) -> String {
                 "미사용"
             }.to_owned(),
             "using_style" => if entry.using { "danger" } else { "primary" }.to_owned(),
-            "ports" => generate_port_buttons(&entry.open_ports),
+            "ports" => generate_port_buttons(&entry.ip, &entry.open_ports),
             _ => String::new(),
         })
         .into_owned()
 }
 
 pub fn generate_create_new_message(ip: &str) -> String {
-    lazy_static! {
-        static ref REGEX_SMALL_INFOS: regex::Regex =
-            regex::Regex::new(r"(?:/(callback|ip)/)+?")
-            .unwrap();
-    }
-    REGEX_SMALL_INFOS
-        .replace_all(CREATE_NEW_MESSAGE, ip)
-        .into_owned()
+    CREATE_NEW_MESSAGE.replace("/ip/", ip)
 }
 
 pub fn generate_list_fields(entries: &[Entry], page: usize) -> String {
@@ -91,7 +84,7 @@ pub fn generate_list_fields(entries: &[Entry], page: usize) -> String {
         .unwrap_or_default()
 }
 
-pub fn generate_list_message(title: &str, query: &str, entries: &[Entry], page: usize) -> String {
+pub fn generate_list_message(entries: &[Entry], page: usize) -> String {
     lazy_static! {
         static ref REGEX_LIST_INFOS: regex::Regex =
             regex::Regex::new(r"(?:/(title|fields|callback|value)/)+?")
@@ -99,10 +92,27 @@ pub fn generate_list_message(title: &str, query: &str, entries: &[Entry], page: 
     }
     REGEX_LIST_INFOS
         .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
-            "title" => title.to_owned(),
+            "title" => "IP 목록".to_owned(),
             "fields" => generate_list_fields(entries, page),
-            "callback" => query.to_owned(),
+            "callback" => "list".to_owned(),
             "value" => format!("{}", page),
+            _ => String::new(),
+        })
+        .into_owned()
+}
+
+pub fn generate_query_message(query: &str, entries: &[Entry], page: usize) -> String {
+    lazy_static! {
+        static ref REGEX_QUERY_INFOS: regex::Regex =
+            regex::Regex::new(r"(?:/(title|fields|callback|value)/)+?")
+            .unwrap();
+    }
+    REGEX_QUERY_INFOS
+        .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
+            "title" => format!("{} 검색 결과", query),
+            "fields" => generate_list_fields(entries, page),
+            "callback" => "query".to_owned(),
+            "value" => format!("{}-{}", query, page),
             _ => String::new(),
         })
         .into_owned()

@@ -42,6 +42,7 @@ pub struct Interactive {
     pub callback_id: String,
     pub token: String,
     pub response_url: String,
+    pub trigger_id: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -56,4 +57,5 @@ pub struct Dialog {
     pub submission: HashMap<String, String>,
     pub callback_id: String,
     pub token: String,
+    pub trigger_id: String,
 }

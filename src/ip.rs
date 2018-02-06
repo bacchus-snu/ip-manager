@@ -6,11 +6,6 @@ use std::io::{Read, Write};
 use std::convert::Into;
 use super::Result;
 
-pub struct SearchResult {
-    pub ip: String,
-    pub element: String,
-}
-
 #[derive(Deserialize)]
 struct InnerEntry {
     ip: String,

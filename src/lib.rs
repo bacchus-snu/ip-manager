@@ -17,6 +17,11 @@ pub use settings::Settings;
 pub mod slack;
 pub mod ip;
 
+lazy_static! {
+    static ref SETTINGS: Settings =
+        Settings::try_new().unwrap();
+}
+
 pub enum Response {
     Unimplemented,
     Unauthorized,
@@ -26,8 +31,6 @@ pub enum Response {
 
 pub fn handle_slash_command(body: &str) -> Response {
     lazy_static! {
-        static ref SETTINGS: Settings =
-            Settings::try_new().unwrap();
         static ref REGEX_IP: regex::Regex =
             regex::Regex::new(r"^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$")
             .unwrap();
@@ -40,8 +43,6 @@ pub fn handle_slash_command(body: &str) -> Response {
                 Some(Response::Unauthorized)
             } else if command.text.is_empty() {
                 Some(Response::Json(slack::message::generate_list_message(
-                    "IP 목록",
-                    "",
                     &ip::Entry::list(SETTINGS.data_path()),
                     0,
                 )))
@@ -56,8 +57,7 @@ pub fn handle_slash_command(body: &str) -> Response {
                     })
                     .map(Response::Json)
             } else {
-                Some(Response::Json(slack::message::generate_list_message(
-                    &format!("{} 검색 결과", &command.text),
+                Some(Response::Json(slack::message::generate_query_message(
                     &command.text,
                     &ip::Entry::search(&command.text, SETTINGS.data_path()),
                     0,
@@ -76,11 +76,11 @@ pub fn handle_submission(body: &str) -> Response {
                 Submission::Interactive(interactive) => {
                     println!("{:?}", interactive);
                     Response::Unimplemented
-                },
+                }
                 Submission::Dialog(dialog) => {
                     println!("{:?}", dialog);
                     Response::Unimplemented
-                },
+                }
             }
         })
         .unwrap_or_else(|| Response::Error)
