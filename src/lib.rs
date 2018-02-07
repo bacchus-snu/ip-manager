@@ -181,7 +181,9 @@ pub fn handle_submission(body: &str) -> Response {
                                     {
                                         if let &Some(ref port) = val {
                                             if let Some(p) = entry.open_ports.get_mut(i) {
-                                                *p = (*port).parse().unwrap();
+                                                if let Ok(port) = (*port).parse::<u32>() {
+                                                    *p = port;
+                                                }
                                             }
                                         } else {
                                             entry.open_ports.remove(i);
@@ -193,7 +195,7 @@ pub fn handle_submission(body: &str) -> Response {
                                         .submission
                                         .values()
                                         .filter_map(|k| k.clone())
-                                        .map(|k| k.parse().unwrap())
+                                        .filter_map(|k| k.parse::<u32>().ok())
                                         .collect());
                                 }
                                 _ => (),
