@@ -89,7 +89,10 @@ impl Entry {
     }
 
     pub fn save(&self) -> Result<()> {
-        let mut file: File = OpenOptions::new().write(true).open(&self.path)?;
+        let mut file: File = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&self.path)?;
         let s = toml::to_string_pretty(&self)?;
         file.write_all(s.as_bytes())?;
 
