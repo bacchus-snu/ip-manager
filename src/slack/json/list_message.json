@@ -6,6 +6,7 @@
             "fields": /fields/
         },
         {
+            "text": "",
             "color": "69D2E7",
             "callback_id": "/callback/",
             "actions": [
