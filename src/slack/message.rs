@@ -66,7 +66,8 @@ pub fn generate_create_new_message(ip: &str) -> String {
 fn generate_list_fields(entries: &[Entry], page: usize) -> String {
     serde_json::to_string(&entries
         .iter()
-        .take((page + 1) * 8)
+        .skip(page * 8)
+        .take(8)
         .map(|entry| {
             json!({
                 "title": entry.ip,
