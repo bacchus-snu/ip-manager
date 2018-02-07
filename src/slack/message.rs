@@ -7,6 +7,7 @@ use ip::Entry;
 const IP_MESSAGE: &str = include_str!("json/ip_message.json");
 const CREATE_NEW_MESSAGE: &str = include_str!("json/create_new_message.json");
 const LIST_MESSAGE: &str = include_str!("json/list_message.json");
+const LIST_MESSAGE_WITH_NO_BUTTON: &str = include_str!("json/list_message_with_no_button.json");
 
 fn generate_port_buttons(port: &[u32]) -> String {
     serde_json::to_string(&port.iter()
@@ -63,8 +64,8 @@ pub fn generate_create_new_message(ip: &str) -> String {
     CREATE_NEW_MESSAGE.replace("/ip/", ip)
 }
 
-fn generate_list_fields(entries: &[Entry], page: usize) -> String {
-    serde_json::to_string(&entries
+fn generate_list_fields(entries: &[Entry], page: usize) -> (String, usize) {
+    let v = entries
         .iter()
         .skip(page * 8)
         .take(8)
@@ -82,41 +83,69 @@ fn generate_list_fields(entries: &[Entry], page: usize) -> String {
                 "short": true
             })
         })
-        .collect::<Vec<_>>())
-        .unwrap_or_default()
+        .collect::<Vec<_>>();
+    (serde_json::to_string(&v).unwrap_or_default(), v.len())
 }
 
 pub fn generate_list_message(entries: &[Entry], page: usize) -> String {
     lazy_static! {
         static ref REGEX_LIST_INFOS: regex::Regex =
-            regex::Regex::new(r"(?:/(title|fields|callback|value)/)+?")
+            regex::Regex::new(r"(?:/(title|text|fields|callback|value)/)+?")
             .unwrap();
     }
+    let (fields, len_fields) = generate_list_fields(entries, page);
     REGEX_LIST_INFOS
-        .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
-            "title" => "IP 목록".to_owned(),
-            "fields" => generate_list_fields(entries, page),
-            "callback" => "list-list".to_owned(),
-            "value" => format!("{}", page),
-            _ => String::new(),
-        })
+        .replace_all(
+            if entries.len() > (page + 1) * 8 {
+                LIST_MESSAGE
+            } else {
+                LIST_MESSAGE_WITH_NO_BUTTON
+            },
+            |caps: &regex::Captures| match &caps[1] {
+                "title" => "IP 목록".to_owned(),
+                "text" => format!(
+                    "{}-{} / {}",
+                    page * 8 + 1,
+                    page * 8 + len_fields,
+                    entries.len()
+                ),
+                "fields" => fields.clone(),
+                "callback" => "list-list".to_owned(),
+                "value" => format!("{}", page),
+                _ => String::new(),
+            },
+        )
         .into_owned()
 }
 
 pub fn generate_query_message(query: &str, entries: &[Entry], page: usize) -> String {
     lazy_static! {
         static ref REGEX_QUERY_INFOS: regex::Regex =
-            regex::Regex::new(r"(?:/(title|fields|callback|value)/)+?")
+            regex::Regex::new(r"(?:/(title|text|fields|callback|value)/)+?")
             .unwrap();
     }
+    let (fields, len_fields) = generate_list_fields(entries, page);
     REGEX_QUERY_INFOS
-        .replace_all(LIST_MESSAGE, |caps: &regex::Captures| match &caps[1] {
-            "title" => format!("{} 검색 결과", query),
-            "fields" => generate_list_fields(entries, page),
-            "callback" => format!("query-{}", query),
-            "value" => format!("{}", page),
-            _ => String::new(),
-        })
+        .replace_all(
+            if entries.len() > (page + 1) * 8 {
+                LIST_MESSAGE
+            } else {
+                LIST_MESSAGE_WITH_NO_BUTTON
+            },
+            |caps: &regex::Captures| match &caps[1] {
+                "title" => format!("{} 검색 결과", query),
+                "text" => format!(
+                    "{}-{} / {}",
+                    page * 8 + 1,
+                    page * 8 + len_fields,
+                    entries.len()
+                ),
+                "fields" => fields.clone(),
+                "callback" => format!("query-{}", query),
+                "value" => format!("{}", page),
+                _ => String::new(),
+            },
+        )
         .into_owned()
 }
 

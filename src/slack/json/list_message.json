@@ -2,6 +2,7 @@
     "attachments": [
         {
             "title": "/title/",
+            "text": "/text/",
             "color": "A7DBD8",
             "fields": /fields/
         },

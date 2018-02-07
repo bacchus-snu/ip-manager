@@ -179,7 +179,7 @@ pub fn handle_submission(body: &str) -> Response {
                                         .iter()
                                         .position(|p| format!("{}", p) == *key)
                                     {
-                                        if let &Some(ref port) = val {
+                                        if let Some(ref port) = *val {
                                             if let Some(p) = entry.open_ports.get_mut(i) {
                                                 if let Ok(port) = (*port).parse::<u32>() {
                                                     *p = port;
