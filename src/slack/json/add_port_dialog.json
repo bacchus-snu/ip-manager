@@ -1,0 +1,34 @@
+{
+    "callback_id": "add_port-/ip/",
+    "title": "포트 추가",
+    "submit_label": "확인",
+    "elements": [
+        {
+            "type": "text",
+            "label": "포트 1",
+            "name": "new_port_1",
+            "subtype": "number"
+        },
+        {
+            "type": "text",
+            "label": "포트 2",
+            "name": "new_port_2",
+            "subtype": "number",
+            "optional": true
+        },
+        {
+            "type": "text",
+            "label": "포트 3",
+            "name": "new_port_3",
+            "subtype": "number",
+            "optional": true
+        },
+        {
+            "type": "text",
+            "label": "포트 4",
+            "name": "new_port_4",
+            "subtype": "number",
+            "optional": true
+        }
+    ]
+}

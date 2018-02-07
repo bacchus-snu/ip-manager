@@ -1,0 +1,24 @@
+{
+    "attachments": [
+        {
+            "title": "/title/",
+            "text": "/text/",
+            "color": "A7DBD8",
+            "fields": /fields/
+        },
+        {
+            "text": "",
+            "color": "69D2E7",
+            "callback_id": "/callback/",
+            "actions": [
+                {
+                    "name": "show_more",
+                    "text": "더 보기",
+                    "type": "button",
+                    "style": "primary",
+                    "value": "/value/"
+                }
+            ]
+        }
+    ]
+}
